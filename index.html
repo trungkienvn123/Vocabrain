@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VocabRain</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --surface: rgba(255, 255, 255, 0.85);
+        }
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
+            height: 100vh;
+            width: 100vw;
+            touch-action: none;
+        }
+
+        #fall-zone {
+            position: absolute;
+            inset: 0;
+            z-index: 10;
+            perspective: 1000px;
+        }
+
+        .falling-word {
+            position: absolute;
+            top: -100px;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.95);
+            color: #4F46E5;
+            font-family: 'Nunito', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 800;
+            border: none;
+            border-radius: 0;
+            box-shadow: 
+                0 -4px 0 0 #1f2937,  
+                0 4px 0 0 #1f2937,   
+                -4px 0 0 0 #1f2937,  
+                4px 0 0 0 #1f2937;   
+            margin: 4px;
+            cursor: pointer;
+            user-select: none;
+            will-change: transform, opacity;
+            animation: fall linear forwards;
+            transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
+        }
+
+        .falling-word:hover {
+            animation-play-state: paused;
+            transform: scale(1.15);
+            background: #ffffff;
+            box-shadow: 
+                0 -4px 0 0 #4F46E5, 
+                0 4px 0 0 #4F46E5, 
+                -4px 0 0 0 #4F46E5, 
+                4px 0 0 0 #4F46E5;
+            z-index: 20;
+        }
+
+        .falling-word.looked-up {
+            background: #10b981; 
+            color: #ffffff;
+            box-shadow: 
+                0 -4px 0 0 #047857, 
+                0 4px 0 0 #047857, 
+                -4px 0 0 0 #047857, 
+                4px 0 0 0 #047857;
+        }
+        
+        .falling-word.looked-up:hover {
+            background: #059669;
+            transform: scale(1.15);
+            box-shadow: 
+                0 -4px 0 0 #022c22, 
+                0 4px 0 0 #022c22, 
+                -4px 0 0 0 #022c22, 
+                4px 0 0 0 #022c22;
+        }
+
+        @keyframes fall {
+            0% { 
+                transform: translateY(0) rotate(-5deg); 
+                opacity: 0; 
+            }
+            5% { 
+                opacity: 1; 
+            }
+            95% { 
+                opacity: 1; 
+            }
+            100% { 
+                transform: translateY(calc(100vh + 150px)) rotate(5deg); 
+                opacity: 0; 
+            }
+        }
+
+        #meaning-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+            z-index: 50;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px 50px;
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            min-width: 300px;
+        }
+        #meaning-display.show {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        .md-word {
+            font-family: 'Nunito', sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+        .md-meaning {
+            font-size: 1.2rem;
+            color: #4B5563;
+            font-weight: 500;
+        }
+        .md-example {
+            font-size: 1rem;
+            color: #6B7280;
+            font-style: italic;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed #e5e7eb;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(2px);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .modal-overlay.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-content {
+            transform: translateY(20px);
+            transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .modal-overlay.open .modal-content {
+            transform: translateY(0);
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body>
+
+    <div id="fall-zone"></div>
+
+    <div id="meaning-display">
+        <button id="close-meaning-btn" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors bg-gray-100 hover:bg-red-50 rounded-full p-1">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+        <div class="md-word" id="md-word">Word</div>
+        <div class="md-meaning" id="md-meaning">Nghĩa của từ</div>
+        <div class="md-example" id="md-example" style="display: none;">Ví dụ</div>
+    </div>
+
+    <div class="absolute top-4 right-4 z-40 flex gap-3">
+        <button id="toggle-pause-btn" class="glass-panel w-12 h-12 rounded-full flex items-center justify-center text-gray-700 hover:text-indigo-600 transition-colors shadow-lg" title="Tạm dừng / Tiếp tục">
+            <svg id="icon-pause" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+            <svg id="icon-play" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <button id="open-list-btn" class="glass-panel w-12 h-12 rounded-full flex items-center justify-center text-gray-700 hover:text-indigo-600 transition-colors shadow-lg" title="Kho từ vựng">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        </button>
+        <button id="open-add-btn" class="glass-panel w-12 h-12 rounded-full flex items-center justify-center text-gray-700 hover:text-indigo-600 transition-colors shadow-lg" title="Thêm từ vựng">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+        </button>
+    </div>
+
+    <div class="absolute bottom-6 left-0 right-0 z-30 flex justify-center pointer-events-none">
+        <div class="glass-panel px-6 py-2 rounded-full text-sm font-medium text-gray-600 shadow-sm">
+            Chạm vào các từ đang rơi để xem nghĩa ✨
+        </div>
+    </div>
+
+    <div id="add-modal" class="modal-overlay">
+        <div class="modal-content glass-panel w-full max-w-md mx-4 rounded-3xl p-6 bg-white/95 shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-gray-800 font-nunito">Thêm từ vựng mới</h2>
+                <button id="close-add-btn" class="p-2 text-gray-500 hover:text-red-500 transition-colors rounded-full hover:bg-gray-100">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="space-y-3">
+                <div>
+                    <input type="text" id="input-word" placeholder="Nhập từ mới (VD: Serendipity)" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-gray-50">
+                </div>
+                <div>
+                    <input type="text" id="input-meaning" placeholder="Nghĩa của từ (VD: Tình cờ may mắn)" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-gray-50">
+                </div>
+                <div>
+                    <input type="text" id="input-example" placeholder="Ví dụ (VD: Finding this cafe was pure serendipity)" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-gray-50">
+                </div>
+                <button id="add-word-btn" class="w-full py-3 mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
+                    + Lưu vào kho
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="list-modal" class="modal-overlay">
+        <div class="modal-content glass-panel w-full max-w-5xl mx-4 rounded-3xl p-6 bg-white/95 shadow-2xl flex flex-col max-h-[85vh]">
+            <div class="flex justify-between items-center mb-6 shrink-0">
+                <h2 class="text-xl font-bold text-gray-800 font-nunito">Kho từ vựng (<span id="word-count">0</span>)</h2>
+                <button id="close-list-btn" class="p-2 text-gray-500 hover:text-red-500 transition-colors rounded-full hover:bg-gray-100">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <div class="mb-4 shrink-0 flex gap-3 flex-col sm:flex-row">
+                <div class="relative flex-1">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </div>
+                    <input type="text" id="search-input" placeholder="Tìm kiếm từ vựng..." class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-gray-50">
+                </div>
+                <div class="flex gap-2 flex-wrap sm:flex-nowrap">
+                    <button id="export-btn" class="px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-700 font-semibold flex items-center gap-2 hover:bg-indigo-50 hover:text-indigo-600 transition-colors" title="Tải xuống dữ liệu (Backup)">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    </button>
+                    <button id="import-btn" class="px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-700 font-semibold flex items-center gap-2 hover:bg-green-50 hover:text-green-600 transition-colors" title="Nhập dữ liệu (Khôi phục)">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    </button>
+                    <input type="file" id="import-file" class="hidden" accept=".json">
+                    <button id="toggle-delete-mode-btn" class="px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-700 font-semibold flex items-center gap-2 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors" title="Bật/Tắt chế độ xóa">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        <span class="hidden sm:inline">Chế độ Xóa</span>
+                    </button>
+                    <button id="select-all-btn" class="hidden px-4 py-2.5 rounded-xl border border-red-200 bg-red-50 text-red-600 font-semibold flex items-center gap-2 hover:bg-red-100 transition-colors shadow-sm">
+                        Chọn tất cả
+                    </button>
+                    <button id="confirm-delete-btn" class="hidden px-4 py-2.5 rounded-xl bg-red-500 text-white font-semibold flex items-center gap-2 hover:bg-red-600 transition-colors shadow-sm">
+                        Xóa <span id="delete-count-badge">(0)</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-auto custom-scrollbar p-1">
+                <div id="word-grid-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                    <!-- Data rendered here -->
+                </div>
+                <div id="empty-state" class="text-center py-10 text-gray-500 hidden">
+                    Không tìm thấy từ vựng nào.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="dialog-overlay" class="modal-overlay" style="z-index: 200;">
+        <div class="modal-content glass-panel w-full max-w-sm mx-4 rounded-3xl p-6 bg-white/95 shadow-2xl text-center">
+            <h3 id="dialog-title" class="text-xl font-bold text-gray-800 font-nunito mb-2">Thông báo</h3>
+            <p id="dialog-message" class="text-gray-600 mb-6 text-sm">Nội dung</p>
+            <div class="flex gap-3 justify-center">
+                <button id="dialog-cancel-btn" class="px-5 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-700 font-semibold hover:bg-gray-100 transition-colors hidden">Hủy</button>
+                <button id="dialog-ok-btn" class="px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition-colors">Đồng ý</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showDialog(title, message, isConfirm = false, onConfirm = null) {
+            const dialogOverlay = document.getElementById('dialog-overlay');
+            const dialogTitle = document.getElementById('dialog-title');
+            const dialogMessage = document.getElementById('dialog-message');
+            const dialogOkBtn = document.getElementById('dialog-ok-btn');
+            const dialogCancelBtn = document.getElementById('dialog-cancel-btn');
+
+            dialogTitle.textContent = title;
+            dialogMessage.textContent = message;
+            
+            if (isConfirm) {
+                dialogCancelBtn.classList.remove('hidden');
+            } else {
+                dialogCancelBtn.classList.add('hidden');
+            }
+
+            dialogOverlay.classList.add('open');
+
+            const newOkBtn = dialogOkBtn.cloneNode(true);
+            const newCancelBtn = dialogCancelBtn.cloneNode(true);
+            dialogOkBtn.parentNode.replaceChild(newOkBtn, dialogOkBtn);
+            dialogCancelBtn.parentNode.replaceChild(newCancelBtn, dialogCancelBtn);
+
+            newOkBtn.addEventListener('click', () => {
+                dialogOverlay.classList.remove('open');
+                if (onConfirm) onConfirm();
+            });
+
+            newCancelBtn.addEventListener('click', () => {
+                dialogOverlay.classList.remove('open');
+            });
+        }
+
+        const STORAGE_KEY = 'fallingVocabData';
+        let vocabList = [];
+        
+        const defaultVocab = [
+            { id: 1, word: 'Endeavor', meaning: 'Sự nỗ lực, cố gắng', example: 'We must constantly endeavor to improve.' },
+            { id: 2, word: 'Resilience', meaning: 'Sự kiên cường, khả năng phục hồi', example: 'She showed great resilience in the face of adversity.' },
+            { id: 3, word: 'Meticulous', meaning: 'Tỉ mỉ, quá kỹ càng', example: 'He is very meticulous about his work.' },
+            { id: 4, word: 'Ephemeral', meaning: 'Phù du, chóng vánh', example: 'Fame in the modern world is often ephemeral.' },
+            { id: 5, word: 'Serendipity', meaning: 'Sự tình cờ may mắn', example: 'Finding this cafe was pure serendipity.' }
+        ];
+
+        function loadData() {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    vocabList = JSON.parse(stored);
+                } else {
+                    vocabList = [...defaultVocab];
+                }
+            } catch (e) {
+                vocabList = [...defaultVocab];
+            }
+            renderWordList();
+        }
+
+        function saveData() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(vocabList));
+            } catch (e) {
+                console.error("Không thể lưu LocalStorage");
+            }
+        }
+
+        const fallZone = document.getElementById('fall-zone');
+        let spawnInterval = null;
+        let isPaused = false;
+        let displayTimeout = null;
+
+        function spawnWord() {
+            if (isPaused || vocabList.length === 0) return;
+
+            const randomItem = vocabList[Math.floor(Math.random() * vocabList.length)];
+            const el = document.createElement('div');
+            el.className = 'falling-word';
+            el.textContent = randomItem.word;
+
+            const randomX = Math.floor(Math.random() * 80) + 5;
+            el.style.left = `${randomX}%`;
+
+            const duration = (Math.random() * 3 + 5).toFixed(1);
+            el.style.animationDuration = `${duration}s`;
+
+            el.addEventListener('mousedown', () => catchWord(el, randomItem));
+            el.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                catchWord(el, randomItem);
+            });
+
+            el.addEventListener('animationend', () => {
+                if(el.parentNode) el.remove();
+            });
+
+            fallZone.appendChild(el);
+        }
+
+        function startSpawning() {
+            if (spawnInterval) clearInterval(spawnInterval);
+            let currentInterval = 1500 - (vocabList.length * 10);
+            if (currentInterval < 400) currentInterval = 400; 
+            spawnInterval = setInterval(spawnWord, currentInterval);
+        }
+
+        const meaningDisplay = document.getElementById('meaning-display');
+        const mdWord = document.getElementById('md-word');
+        const mdMeaning = document.getElementById('md-meaning');
+        const mdExample = document.getElementById('md-example');
+        const closeMeaningBtn = document.getElementById('close-meaning-btn');
+
+        closeMeaningBtn.addEventListener('click', () => {
+            meaningDisplay.classList.remove('show');
+            if(displayTimeout) clearTimeout(displayTimeout);
+        });
+        
+        fallZone.addEventListener('click', (e) => {
+            if(e.target === fallZone && meaningDisplay.classList.contains('show')) {
+                meaningDisplay.classList.remove('show');
+                if(displayTimeout) clearTimeout(displayTimeout);
+            }
+        });
+
+        function speakWord(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); 
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'en-US'; 
+                utterance.rate = 0.9; 
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        function catchWord(element, data) {
+            speakWord(data.word);
+            element.classList.add('looked-up');
+            
+            mdWord.textContent = data.word;
+            mdMeaning.textContent = data.meaning;
+            
+            if (data.example) {
+                mdExample.textContent = `"${data.example}"`;
+                mdExample.style.display = 'block';
+            } else {
+                mdExample.style.display = 'none';
+            }
+            
+            meaningDisplay.classList.add('show');
+            if(displayTimeout) clearTimeout(displayTimeout);
+            
+            displayTimeout = setTimeout(() => {
+                meaningDisplay.classList.remove('show');
+            }, 5000);
+        }
+
+        const addModal = document.getElementById('add-modal');
+        const listModal = document.getElementById('list-modal');
+        const openAddBtn = document.getElementById('open-add-btn');
+        const closeAddBtn = document.getElementById('close-add-btn');
+        const openListBtn = document.getElementById('open-list-btn');
+        const closeListBtn = document.getElementById('close-list-btn');
+        const pauseBtn = document.getElementById('toggle-pause-btn');
+        const iconPause = document.getElementById('icon-pause');
+        const iconPlay = document.getElementById('icon-play');
+
+        function toggleGamePause(pauseState) {
+            isPaused = pauseState;
+            if (isPaused) {
+                iconPause.classList.add('hidden');
+                iconPlay.classList.remove('hidden');
+                pauseBtn.classList.add('text-indigo-600');
+            } else {
+                iconPlay.classList.add('hidden');
+                iconPause.classList.remove('hidden');
+                pauseBtn.classList.remove('text-indigo-600');
+            }
+            const wordsOnScreen = document.querySelectorAll('.falling-word');
+            wordsOnScreen.forEach(w => {
+                w.style.animationPlayState = isPaused ? 'paused' : 'running';
+            });
+        }
+
+        openAddBtn.addEventListener('click', () => {
+            addModal.classList.add('open');
+            toggleGamePause(true);
+        });
+        closeAddBtn.addEventListener('click', () => {
+            addModal.classList.remove('open');
+            if(!listModal.classList.contains('open')) toggleGamePause(false);
+        });
+
+        openListBtn.addEventListener('click', () => {
+            renderWordList();
+            listModal.classList.add('open');
+            toggleGamePause(true);
+        });
+        closeListBtn.addEventListener('click', () => {
+            listModal.classList.remove('open');
+            if(!addModal.classList.contains('open')) toggleGamePause(false);
+            if (typeof isDeleteMode !== 'undefined') {
+                isDeleteMode = false;
+                if (selectedForDelete) selectedForDelete.clear();
+                updateDeleteUI();
+            }
+        });
+
+        pauseBtn.addEventListener('click', () => {
+            toggleGamePause(!isPaused);
+        });
+
+        const inputWord = document.getElementById('input-word');
+        const inputMeaning = document.getElementById('input-meaning');
+        const inputExample = document.getElementById('input-example');
+        const addBtn = document.getElementById('add-word-btn');
+        
+        function validateInput() {
+            const w = inputWord.value.trim();
+            const m = inputMeaning.value.trim();
+            addBtn.disabled = !(w && m);
+        }
+        inputWord.addEventListener('input', validateInput);
+        inputMeaning.addEventListener('input', validateInput);
+
+        addBtn.addEventListener('click', () => {
+            if (addBtn.disabled) return;
+            const newWord = {
+                id: Date.now(),
+                word: inputWord.value.trim(),
+                meaning: inputMeaning.value.trim(),
+                example: inputExample.value.trim()
+            };
+            vocabList.unshift(newWord);
+            saveData();
+            startSpawning();
+            
+            inputWord.value = '';
+            inputMeaning.value = '';
+            inputExample.value = '';
+            validateInput();
+            inputWord.focus();
+            
+            const originalText = addBtn.textContent;
+            addBtn.textContent = "✓ Đã lưu thành công";
+            addBtn.classList.add('bg-green-500');
+            setTimeout(() => {
+                addBtn.textContent = originalText;
+                addBtn.classList.remove('bg-green-500');
+            }, 1000);
+        });
+
+        const gridContainer = document.getElementById('word-grid-container');
+        const wordCount = document.getElementById('word-count');
+        const emptyState = document.getElementById('empty-state');
+        const searchInput = document.getElementById('search-input');
+        
+        let isDeleteMode = false;
+        let selectedForDelete = new Set();
+        const toggleDeleteBtn = document.getElementById('toggle-delete-mode-btn');
+        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+        const deleteCountBadge = document.getElementById('delete-count-badge');
+        const selectAllBtn = document.getElementById('select-all-btn');
+
+        toggleDeleteBtn.addEventListener('click', () => {
+            isDeleteMode = !isDeleteMode;
+            selectedForDelete.clear();
+            updateDeleteUI();
+            renderWordList(searchInput.value.trim());
+        });
+
+        function updateDeleteUI() {
+            if (isDeleteMode) {
+                toggleDeleteBtn.classList.add('bg-red-100', 'text-red-600', 'border-red-300');
+                toggleDeleteBtn.classList.remove('bg-gray-50', 'text-gray-700');
+                selectAllBtn.classList.remove('hidden');
+                if (selectedForDelete.size > 0) {
+                    confirmDeleteBtn.classList.remove('hidden');
+                    deleteCountBadge.textContent = `(${selectedForDelete.size})`;
+                } else {
+                    confirmDeleteBtn.classList.add('hidden');
+                }
+            } else {
+                toggleDeleteBtn.classList.remove('bg-red-100', 'text-red-600', 'border-red-300');
+                toggleDeleteBtn.classList.add('bg-gray-50', 'text-gray-700');
+                confirmDeleteBtn.classList.add('hidden');
+                selectAllBtn.classList.add('hidden');
+            }
+
+            if (isDeleteMode) {
+                const filterText = searchInput.value.trim();
+                const filteredList = vocabList.filter(item => 
+                    item.word.toLowerCase().includes(filterText.toLowerCase()) || 
+                    item.meaning.toLowerCase().includes(filterText.toLowerCase()) ||
+                    (item.example && item.example.toLowerCase().includes(filterText.toLowerCase()))
+                );
+                const allSelected = filteredList.length > 0 && filteredList.every(item => selectedForDelete.has(item.id));
+                selectAllBtn.textContent = allSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả';
+            }
+        }
+
+        selectAllBtn.addEventListener('click', () => {
+            const filterText = searchInput.value.trim();
+            const filteredList = vocabList.filter(item => 
+                item.word.toLowerCase().includes(filterText.toLowerCase()) || 
+                item.meaning.toLowerCase().includes(filterText.toLowerCase()) ||
+                (item.example && item.example.toLowerCase().includes(filterText.toLowerCase()))
+            );
+            
+            const allSelected = filteredList.length > 0 && filteredList.every(item => selectedForDelete.has(item.id));
+            
+            if (allSelected) {
+                filteredList.forEach(item => selectedForDelete.delete(item.id));
+            } else {
+                filteredList.forEach(item => selectedForDelete.add(item.id));
+            }
+            
+            renderWordList(filterText);
+            updateDeleteUI();
+        });
+
+        confirmDeleteBtn.addEventListener('click', () => {
+            if (selectedForDelete.size === 0) return;
+            vocabList = vocabList.filter(item => !selectedForDelete.has(item.id));
+            saveData();
+            selectedForDelete.clear();
+            isDeleteMode = false; 
+            updateDeleteUI();
+            renderWordList(searchInput.value.trim());
+            startSpawning(); 
+        });
+
+        searchInput.addEventListener('input', (e) => {
+            renderWordList(e.target.value.trim());
+            updateDeleteUI();
+        });
+
+        function renderWordList(filterText = '') {
+            gridContainer.innerHTML = '';
+            wordCount.textContent = vocabList.length;
+
+            const filteredList = vocabList.filter(item => 
+                item.word.toLowerCase().includes(filterText.toLowerCase()) || 
+                item.meaning.toLowerCase().includes(filterText.toLowerCase()) ||
+                (item.example && item.example.toLowerCase().includes(filterText.toLowerCase()))
+            );
+
+            if (filteredList.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                filteredList.forEach(item => {
+                    const div = document.createElement('div');
+                    const isSelected = selectedForDelete.has(item.id);
+                    let baseClasses = 'px-3 py-3 border rounded-xl font-bold font-nunito text-center truncate transition-all select-none ';
+                    
+                    if (isDeleteMode) {
+                        div.style.cursor = 'pointer';
+                        if (isSelected) {
+                            div.className = baseClasses + 'bg-red-100 border-red-500 text-red-700 shadow-sm transform scale-[0.96] ring-2 ring-red-200 ring-offset-1';
+                        } else {
+                            div.className = baseClasses + 'bg-white border-gray-200 text-gray-800 hover:border-red-400 hover:bg-red-50 hover:text-red-600';
+                        }
+                        div.addEventListener('click', () => {
+                            if (selectedForDelete.has(item.id)) {
+                                selectedForDelete.delete(item.id);
+                            } else {
+                                selectedForDelete.add(item.id);
+                            }
+                            renderWordList(searchInput.value.trim());
+                            updateDeleteUI();
+                        });
+                    } else {
+                        div.className = baseClasses + 'bg-white border-gray-100 text-gray-700 shadow-sm hover:shadow-md hover:border-indigo-200';
+                    }
+
+                    div.textContent = item.word;
+                    div.title = item.meaning; 
+                    gridContainer.appendChild(div);
+                });
+            }
+        }
+
+        const exportBtn = document.getElementById('export-btn');
+        const importBtn = document.getElementById('import-btn');
+        const importFile = document.getElementById('import-file');
+
+        exportBtn.addEventListener('click', () => {
+            if(vocabList.length === 0) {
+                showDialog("Thông báo", "Kho từ vựng đang trống, không có gì để xuất.", false);
+                return;
+            }
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(vocabList));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "TuVungRoi_Backup.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        });
+
+        importBtn.addEventListener('click', () => {
+            importFile.click();
+        });
+
+        // Hàm tạo Hộp thoại thông minh (3 nút) khi Nhập file
+        function showImportDialog(fileName, taggedData) {
+            const dialogOverlay = document.getElementById('dialog-overlay');
+            const dialogTitle = document.getElementById('dialog-title');
+            const dialogMessage = document.getElementById('dialog-message');
+            const btnContainer = dialogOverlay.querySelector('.flex.gap-3');
+            
+            dialogTitle.textContent = "Tùy chọn Nhập dữ liệu";
+            dialogMessage.textContent = `Tải lên ${taggedData.length} từ vựng từ file "${fileName}". Bạn muốn Ghi đè (xóa kho cũ) hay Gộp thêm (cộng dồn vào kho cũ)?`;
+            
+            // Tạm thời ẩn các nút cũ, thay bằng bộ 3 nút mới
+            const oldHtml = btnContainer.innerHTML;
+            btnContainer.innerHTML = '';
+            
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = "px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-700 font-semibold hover:bg-gray-100 transition-colors";
+            cancelBtn.textContent = "Hủy";
+            
+            const overwriteBtn = document.createElement('button');
+            overwriteBtn.className = "px-4 py-2.5 rounded-xl border border-red-200 bg-red-50 text-red-600 font-semibold hover:bg-red-100 transition-colors";
+            overwriteBtn.textContent = "Ghi đè";
+
+            const mergeBtn = document.createElement('button');
+            mergeBtn.className = "px-4 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition-colors";
+            mergeBtn.textContent = "Gộp thêm";
+
+            btnContainer.appendChild(cancelBtn);
+            btnContainer.appendChild(overwriteBtn);
+            btnContainer.appendChild(mergeBtn);
+
+            dialogOverlay.classList.add('open');
+
+            const closeDialog = () => {
+                dialogOverlay.classList.remove('open');
+                importFile.value = ""; 
+                // Trả lại các nút mặc định sau khi đóng để không hỏng các hộp thoại khác
+                setTimeout(() => { btnContainer.innerHTML = oldHtml; }, 300);
+            };
+
+            cancelBtn.onclick = closeDialog;
+            
+            overwriteBtn.onclick = () => {
+                vocabList = taggedData;
+                saveData();
+                renderWordList(searchInput.value.trim());
+                startSpawning();
+                closeDialog();
+                setTimeout(() => showDialog("Thành công", "Đã GHI ĐÈ dữ liệu mới thành công!", false), 350);
+            };
+
+            mergeBtn.onclick = () => {
+                vocabList = [...taggedData, ...vocabList];
+                saveData();
+                renderWordList(searchInput.value.trim());
+                startSpawning();
+                closeDialog();
+                setTimeout(() => showDialog("Thành công", "Đã GỘP THÊM từ vựng thành công!", false), 350);
+            };
+        }
+
+        importFile.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if(!file) return;
+            const fileName = file.name.replace('.json', ''); // Lấy tên file làm Tag
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const importedData = JSON.parse(event.target.result);
+                    if(Array.isArray(importedData) && importedData.length > 0 && importedData[0].hasOwnProperty('word')) {
+                        // Tự động gắn Tag (nhãn) và cấp ID mới cho các từ vựng này
+                        const taggedData = importedData.map(item => ({
+                            ...item,
+                            id: Date.now() + Math.random(), // ID ngẫu nhiên đảm bảo không bị trùng khi gộp
+                            tag: fileName
+                        }));
+                        showImportDialog(file.name, taggedData);
+                    } else {
+                        showDialog("Lỗi dữ liệu", "File JSON không đúng cấu trúc của ứng dụng.", false);
+                    }
+                } catch(err) {
+                    showDialog("Lỗi file", "File bị lỗi cú pháp hoặc không phải định dạng JSON hợp lệ.", false);
+                }
+                importFile.value = ""; 
+            };
+            reader.readAsText(file);
+        });
+
+        loadData();
+        startSpawning();
+
+    </script>
+</body>
+</html>
